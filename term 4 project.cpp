@@ -119,7 +119,9 @@ int main()
 {
     srand(time(NULL)); // Random seed
     std::vector<Bacterium*> bacteria_container;
+    std::vector<Bacterium*> bacteria_death_row;
     std::vector<Food*> food_container;
+    std::vector<Food*> food_death_row;
 
     // Creat adams
     for (int i{}; i < ADAMS_N; ++i) {
@@ -173,21 +175,36 @@ int main()
                 b->m_energy += (f->m_energy - f_new_energy) / consumers.size();
             }
             f->m_energy = f_new_energy;
-            // Delete empty food
+        }
+
+        // Remove drained food
+        for (Food* f : food_container) {
             if (f->m_energy <= 0) {
-                for (int i{}; i < food_container.size(); ++i) {
-                    if (food_container[i] == f) {
-                        food_container.erase(food_container.begin() + i);
-                    }
+                food_death_row.push_back(f);
+            }
+        }
+        for (Food* f1 : food_death_row) {
+            for (int i{}; i < food_container.size(); ++i) {
+                if (food_container[i] == f1) {
+                    delete food_container[i];
+                    food_container.erase(food_container.begin() + i);
+                    break;
                 }
             }
         }
+        food_death_row.clear();
 
-        // Death
-        
+        // Bacteria death
+        for (Bacterium* b : bacteria_container) {
+            if (b->m_energy <= 0.0) {
+
+            }
+        }
+
         // Reproduction
         
         // Add food
+
         ++step;
     }
 }

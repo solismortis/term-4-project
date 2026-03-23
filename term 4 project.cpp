@@ -38,6 +38,20 @@ float dist(float x1, float y1, float x2, float y2) {
     return std::sqrtf(std::powf(x1 - x2, 2) + std::powf(y1 - y2, 2));
 }
 
+struct Food {
+    float m_x;
+    float m_y;
+    float m_energy;
+    float m_radius;
+
+    Food() {
+        m_x = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
+        m_y = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
+        m_energy = random_float(FOOD_MIN, FOOD_MAX);
+        m_radius = m_energy / 20.0f;
+    }
+};
+
 struct Bacterium {
     float m_x;
     float m_y;
@@ -86,11 +100,7 @@ struct Bacterium {
 
     bool can_eat(Food* f) {
         /* Takes food. Returns true if a bacterium is close enough to eat this food */
-        // TODO: Change to use the distance function
-        if (dist(m_)
-
-        if (std::sqrt(std::pow(m_x - f->m_x, 2)
-                    + std::pow(m_y - f->m_y, 2)) <= f->m_radius) {
+        if (dist(m_x, m_y, f->m_x, f->m_y) <= f->m_radius) {
             return true;
         }
         return false;
@@ -102,20 +112,6 @@ struct Bacterium {
 
     void reproduce() {
 
-    }
-};
-
-struct Food {
-    float m_x;
-    float m_y;
-    float m_energy;
-    float m_radius;
-
-    Food() {
-        m_x = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
-        m_y = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
-        m_energy = random_float(FOOD_MIN, FOOD_MAX);
-        m_radius = m_energy / 20.0f;
     }
 };
 

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <random>
 #include <vector>
 
 // Hyperparameters
@@ -21,21 +22,22 @@ float MUTATION_CHANCE{ 0.1f }; // Reproduction mutation probability
 float MUTATION_STR{ 0.1f }; // Reproduction mutation strength
 //
 
+// Using the constructor to initialize with a seed
+std::mt19937 mt(time(nullptr));
 
 int random_int(int min, int max) {
     int range;
     range = max - min + 1;
-    return rand() % range + min;
+    return mt() % range + min;
 }
 
 float random_float(float min, float max) {
-    // Bad for proper science
-    return min + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (max - min)));
+    return min + static_cast<float>(mt()) / (static_cast<float>(mt.max() / (max - min)));
 }
 
 float dist(float x1, float y1, float x2, float y2) {
     /* Return distance */
-    return std::sqrtf(std::powf(x1 - x2, 2) + std::powf(y1 - y2, 2));
+    return std::sqrtf(std::powf(x1 - x2, 2.0f) + std::powf(y1 - y2, 2.0f));
 }
 
 struct Food {
@@ -117,7 +119,6 @@ struct Bacterium {
 
 int main()
 {
-    srand(time(NULL)); // Random seed
     std::vector<Bacterium*> bacteria_container;
     std::vector<Bacterium*> bacteria_death_row;
     std::vector<Food*> food_container;
@@ -153,7 +154,7 @@ int main()
                 // Move
                 A = closest_food->m_x - b->m_x;
                 B = closest_food->m_y - b->m_y;
-                C = std::sqrtf(std::powf(A, 2) + std::powf(B, 2));
+                C = std::sqrtf(std::powf(A, 2.0f) + std::powf(B, 2.0f));
                 dist_to_move = std::min(b->m_speed, C - closest_food->m_radius); // No need to overshoot
                 dx = A / C * dist_to_move;
                 dy = B / A * dx;
@@ -179,13 +180,13 @@ int main()
 
         // Remove drained food
         for (Food* f : food_container) {
-            if (f->m_energy <= 0) {
+            if (f->m_energy <= 0.0f) {
                 food_death_row.push_back(f);
             }
         }
-        for (Food* f1 : food_death_row) {
+        for (Food* f : food_death_row) {
             for (int i{}; i < food_container.size(); ++i) {
-                if (food_container[i] == f1) {
+                if (food_container[i] == f) {
                     delete food_container[i];
                     food_container.erase(food_container.begin() + i);
                     break;
@@ -196,14 +197,30 @@ int main()
 
         // Bacteria death
         for (Bacterium* b : bacteria_container) {
-            if (b->m_energy <= 0.0) {
-
+            if (b->m_energy <= 0.0f) {
+                bacteria_death_row.push_back(b);
             }
         }
+        for (Bacterium* b : bacteria_death_row) {
+            for (int i{}; i < bacteria_container.size(); ++i) {
+                if (bacteria_container[i] == b) {
+                    delete bacteria_container[i];
+                    bacteria_container.erase(bacteria_container.begin() + i);
+                    break;
+                }
+            }
+        }
+        bacteria_death_row.clear();
 
         // Reproduction
+        for (Bacterium* b : bacteria_container) {
+            b->reproduce();
+        }
         
         // Add food
+        if (random_float(0.0f, 1.0f) >= FOOD_DROP_PROB) {
+            food_container.push_back(new Food);
+        }
 
         ++step;
     }

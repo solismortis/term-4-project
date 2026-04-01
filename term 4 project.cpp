@@ -1,8 +1,17 @@
+/* Things to improve:
+> When eating, take into account b->m_max_energy (right now some food gets wasted)
+*/
+
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <random>
+#include <string>
 #include <vector>
+#include <nlohmann/json.hpp>
+
+using json = nlohmann::json;
 
 // Hyperparameters
 //
@@ -107,24 +116,22 @@ struct Bacterium {
         }
         return false;
     }
-
-    void eat() {
-
-    }
-
-    void reproduce() {
-
-    }
 };
 
 int main()
 {
+    std::ofstream frames_file("frames.json");
+    json frames_json{ json::array() };
+    json frame;
+    json bacteria;
+
     std::vector<Bacterium*> bacteria_container;
+    std::vector<Bacterium*> newborns;
     std::vector<Bacterium*> bacteria_death_row;
     std::vector<Food*> food_container;
     std::vector<Food*> food_death_row;
 
-    // Creat adams
+    // Create adams
     for (int i{}; i < ADAMS_N; ++i) {
         bacteria_container.push_back(new Bacterium);
     }
@@ -134,8 +141,24 @@ int main()
           closest_food_dist,
           curr_dist, // Current distance
           dx, dy, A, B, C, dist_to_move; // Temporary movement vars
+
+    // Save frame 0
+    frame["step"] = 0;
+    frame["bacteria"] = json::array();
+    for (Bacterium* b : bacteria_container) {
+        json bacteria_j{ json::array({
+            {"x", b->m_x},
+            {"y", b->m_y},
+            {"speed", b->m_speed},
+            {"max_energy", b->m_max_energy},
+            {"energy", b->m_energy}}) };
+        frame["bacteria"].push_back(bacteria_j);
+    }
+    frames_json.push_back(frame);
+
+    // Simulation
     while (step < STEPS) {
-        std::cout << step << "\n";
+        std::cout << "Step: " << step << "\n";
         // Movement
         if (food_container.size() > 0) {
             for (Bacterium* b : bacteria_container) {
@@ -212,16 +235,43 @@ int main()
         }
         bacteria_death_row.clear();
 
-        // Reproduction
+        // Reproduction. Have to technically kill parent
         for (Bacterium* b : bacteria_container) {
-            b->reproduce();
+            if (b->m_energy >= b->m_max_energy) {
+                newborns.push_back(new Bacterium(b));
+                newborns.push_back(new Bacterium(b));
+                bacteria_death_row.push_back(b);
+            }
         }
+        // Kill parent
+        for (Bacterium* b : bacteria_death_row) {
+            for (int i{}; i < bacteria_container.size(); ++i) {
+                if (bacteria_container[i] == b) {
+                    delete bacteria_container[i];
+                    bacteria_container.erase(bacteria_container.begin() + i);
+                    break;
+                }
+            }
+        }
+        // Transfer newborns
+        bacteria_death_row.clear();
+        for (Bacterium* b : newborns) {
+            bacteria_container.push_back(b);
+        }
+        newborns.clear();
         
         // Add food
         if (random_float(0.0f, 1.0f) >= FOOD_DROP_PROB) {
             food_container.push_back(new Food);
         }
 
+        // Increment step and save frame
         ++step;
+        frame["step"] = step;
+        frames_json.push_back(frame);
     }
+
+    frames_file << frames_json;
+    frames_file.close();
+    std::cout << "Simulation over\n";
 }

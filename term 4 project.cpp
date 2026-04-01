@@ -69,7 +69,6 @@ struct Bacterium {
     float m_y;
     float m_max_speed;
     float m_max_energy;
-    float m_max_energy;
     float m_energy; // Current energy
 
     Bacterium() {

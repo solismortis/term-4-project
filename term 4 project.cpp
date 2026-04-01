@@ -11,21 +11,22 @@
 #include <vector>
 #include <nlohmann/json.hpp>
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 // Hyperparameters
 //
-int STEPS{ 10 }; // Total simulation steps
+int STEPS{ 100 }; // Total simulation steps
 int LEVEL_SIZE{ 100 }; // Width and height of the level
 
-float FOOD_DROP_PROB{ 0.1f }; // Probability of adding food to the level
+float FOOD_DROP_PROB{ 0.1f }; // Probability of adding food per turn
 int	FOOD_MIN{ 10 }; // Min food energy
 int FOOD_MAX{ 100 }; // Max food energy
 int SUSTAINMENT{ 1 }; // How much is spent on sustaining life per turn. Does not mutate
 
-int ADAMS_N{ 5 }; // Number of adams
-float ADAM_MAX_SPEED{ 5.0f }; // Adams' max speed
-float ADAM_MAX_ENERGY{ 100.0f }; // Adams' max energy
+int ADAMS_N{ 1 }; // Number of adams
+float ADAM_MIN_SPEED{ 1.0f };
+float ADAM_MAX_SPEED{ 5.0f };
+float ADAM_MAX_ENERGY{ 30.0f };
 
 float MUTATION_CHANCE{ 0.1f }; // Reproduction mutation probability 
 float MUTATION_STR{ 0.1f }; // Reproduction mutation strength
@@ -66,7 +67,8 @@ struct Food {
 struct Bacterium {
     float m_x;
     float m_y;
-    float m_speed;
+    float m_max_speed;
+    float m_max_energy;
     float m_max_energy;
     float m_energy; // Current energy
 
@@ -74,9 +76,9 @@ struct Bacterium {
         /* Adams constructor */
         m_x = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
         m_y = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
-        m_speed = random_float(0.0f, ADAM_MAX_SPEED);
+        m_max_speed = random_float(0.0f, ADAM_MAX_SPEED);
         m_max_energy = random_float(0.0f, ADAM_MAX_ENERGY);
-        m_energy = m_max_energy;
+        m_energy = random_float(0.0f, m_max_energy);
     }
 
     Bacterium(Bacterium* parent) {
@@ -88,16 +90,16 @@ struct Bacterium {
         m_y = random_float(parent->m_y - max_spawn_spread, parent->m_y + max_spawn_spread);
 
         // Mutate speed
-        if (random_float(0.0f, 1.0f) >= MUTATION_CHANCE) {
-            m_speed = random_float(parent->m_speed * (1.0f - MUTATION_STR),
-                                   parent->m_speed * (1.0f + MUTATION_STR));
+        if (random_float(0.0f, 1.0f) <= MUTATION_CHANCE) {
+            m_max_speed = random_float(parent->m_max_speed * (1.0f - MUTATION_STR),
+                                   parent->m_max_speed * (1.0f + MUTATION_STR));
         }
         else {
-            m_speed = parent->m_speed;
+            m_max_speed = parent->m_max_speed;
         }
 
         // Mutate max energy
-        if (random_float(0.0f, 1.0f) >= MUTATION_CHANCE) {
+        if (random_float(0.0f, 1.0f) <= MUTATION_CHANCE) {
             m_max_energy = random_float(parent->m_max_energy * (1.0f - MUTATION_STR),
                                         parent->m_max_energy * (1.0f + MUTATION_STR));
         }
@@ -136,29 +138,42 @@ int main()
         bacteria_container.push_back(new Bacterium);
     }
 
+    // Drop initial food
+    food_container.push_back(new Food);
+
     int step{};
     float f_new_energy,
           closest_food_dist,
           curr_dist, // Current distance
           dx, dy, A, B, C, dist_to_move; // Temporary movement vars
 
-    // Save frame 0
-    frame["step"] = 0;
-    frame["bacteria"] = json::array();
-    for (Bacterium* b : bacteria_container) {
-        json bacteria_j{ json::array({
-            {"x", b->m_x},
-            {"y", b->m_y},
-            {"speed", b->m_speed},
-            {"max_energy", b->m_max_energy},
-            {"energy", b->m_energy}}) };
-        frame["bacteria"].push_back(bacteria_j);
-    }
-    frames_json.push_back(frame);
-
     // Simulation
     while (step < STEPS) {
         std::cout << "Step: " << step << "\n";
+
+        // Save frame
+        frame["step"] = step;
+        frame["bacteria"] = json::array();
+        for (Bacterium* b : bacteria_container) {
+            json bacteria_j{
+                {"x", b->m_x},
+                {"y", b->m_y},
+                {"speed", b->m_max_speed},
+                {"max_energy", b->m_max_energy},
+                {"energy", b->m_energy} };
+            frame["bacteria"].push_back(bacteria_j);
+        }
+        frame["food"] = json::array();
+        for (Food* f : food_container) {
+            json food_j{
+                {"x", f->m_x},
+                {"y", f->m_y},
+                {"energy", f->m_energy},
+                {"radius", f->m_radius}};
+            frame["food"].push_back(food_j);
+        }
+        frames_json.push_back(frame);
+
         // Movement
         if (food_container.size() > 0) {
             for (Bacterium* b : bacteria_container) {
@@ -178,7 +193,7 @@ int main()
                 A = closest_food->m_x - b->m_x;
                 B = closest_food->m_y - b->m_y;
                 C = std::sqrtf(std::powf(A, 2.0f) + std::powf(B, 2.0f));
-                dist_to_move = std::min(b->m_speed, C - closest_food->m_radius); // No need to overshoot
+                dist_to_move = std::min(b->m_max_speed, C - closest_food->m_radius); // No need to overshoot
                 dx = A / C * dist_to_move;
                 dy = B / A * dx;
                 b->m_x += dx;
@@ -236,6 +251,7 @@ int main()
         bacteria_death_row.clear();
 
         // Reproduction. Have to technically kill parent
+        //
         for (Bacterium* b : bacteria_container) {
             if (b->m_energy >= b->m_max_energy) {
                 newborns.push_back(new Bacterium(b));
@@ -259,16 +275,15 @@ int main()
             bacteria_container.push_back(b);
         }
         newborns.clear();
+        //
         
         // Add food
-        if (random_float(0.0f, 1.0f) >= FOOD_DROP_PROB) {
+        if (random_float(0.0f, 1.0f) <= FOOD_DROP_PROB) {
             food_container.push_back(new Food);
         }
 
-        // Increment step and save frame
+        // Increment step
         ++step;
-        frame["step"] = step;
-        frames_json.push_back(frame);
     }
 
     frames_file << frames_json;

@@ -6,6 +6,9 @@
 # Added by me
 .idea/
 frames.json
+bacteria.gif
+experiment.py
+
 
 # User-specific files
 *.rsuser

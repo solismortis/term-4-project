@@ -18,15 +18,15 @@ using json = nlohmann::ordered_json;
 int STEPS{ 100 }; // Total simulation steps
 int LEVEL_SIZE{ 100 }; // Width and height of the level
 
-float FOOD_DROP_PROB{ 0.1f }; // Probability of adding food per turn
+float FOOD_DROP_PROB{ 0.3f }; // Probability of adding food per turn
 int	FOOD_MIN{ 10 }; // Min food energy
-int FOOD_MAX{ 100 }; // Max food energy
-int SUSTAINMENT{ 1 }; // How much is spent on sustaining life per turn. Does not mutate
+int FOOD_MAX{ 50 }; // Max food energy
+float SUSTAINMENT{ 0.1f }; // How much is spent on sustaining life per turn. Does not mutate
 
-int ADAMS_N{ 1 }; // Number of adams
-float ADAM_MIN_SPEED{ 1.0f };
-float ADAM_MAX_SPEED{ 5.0f };
-float ADAM_MAX_ENERGY{ 30.0f };
+int ADAMS_N{ 50 }; // Number of adams
+float ADAM_MIN_SPEED{ 3.0f };
+float ADAM_MAX_SPEED{ 6.0f };
+float ADAM_MAX_ENERGY{ 100.0f };
 
 float MUTATION_CHANCE{ 0.1f }; // Reproduction mutation probability 
 float MUTATION_STR{ 0.1f }; // Reproduction mutation strength
@@ -60,7 +60,7 @@ struct Food {
         m_x = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
         m_y = random_float(0.0f, static_cast<float>(LEVEL_SIZE));
         m_energy = random_float(FOOD_MIN, FOOD_MAX);
-        m_radius = m_energy / 20.0f;
+        m_radius = m_energy / 5.0f;
     }
 };
 
@@ -131,6 +131,8 @@ int main()
     std::vector<Bacterium*> bacteria_death_row;
     std::vector<Food*> food_container;
     std::vector<Food*> food_death_row;
+    int death_count{};
+    int reproduction_events{};
 
     // Create adams
     for (int i{}; i < ADAMS_N; ++i) {
@@ -152,12 +154,14 @@ int main()
 
         // Save frame
         frame["step"] = step;
+        frame["death count"] = death_count;
+        frame["reproduction events"] = reproduction_events;
         frame["bacteria"] = json::array();
         for (Bacterium* b : bacteria_container) {
             json bacteria_j{
                 {"x", b->m_x},
                 {"y", b->m_y},
-                {"speed", b->m_max_speed},
+                {"max_speed", b->m_max_speed},
                 {"max_energy", b->m_max_energy},
                 {"energy", b->m_energy} };
             frame["bacteria"].push_back(bacteria_j);
@@ -197,6 +201,8 @@ int main()
                 dy = B / A * dx;
                 b->m_x += dx;
                 b->m_y += dy;
+                // Drain bacteria energy
+                b->m_energy -= dist_to_move * b->m_max_speed / 3.0f;
             }
         }
 
@@ -232,10 +238,16 @@ int main()
         }
         food_death_row.clear();
 
+        // Sustainment
+        for (Bacterium* b : bacteria_container) {
+            b->m_energy -= SUSTAINMENT;
+        }
+
         // Bacteria death
         for (Bacterium* b : bacteria_container) {
             if (b->m_energy <= 0.0f) {
                 bacteria_death_row.push_back(b);
+                ++death_count;
             }
         }
         for (Bacterium* b : bacteria_death_row) {
@@ -256,6 +268,7 @@ int main()
                 newborns.push_back(new Bacterium(b));
                 newborns.push_back(new Bacterium(b));
                 bacteria_death_row.push_back(b);
+                ++reproduction_events;
             }
         }
         // Kill parent

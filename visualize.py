@@ -10,7 +10,7 @@ MAKE_GIF = False
 
 with open('frames.json', 'r') as file:
     frames = json.load(file)
-pprint(frames, sort_dicts=False)
+# pprint(frames, sort_dicts=False)
 
 # Find max bacteria speed and energy for color coding
 sim_max_speed = 0

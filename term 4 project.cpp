@@ -18,18 +18,19 @@ using json = nlohmann::ordered_json;
 int STEPS{ 100 }; // Total simulation steps
 int LEVEL_SIZE{ 100 }; // Width and height of the level
 
-float FOOD_DROP_PROB{ 0.3f }; // Probability of adding food per turn
+float FOOD_DROP_PROB{ 0.005f }; // Probability of adding food per turn
 int	FOOD_MIN{ 10 }; // Min food energy
-int FOOD_MAX{ 200 }; // Max food energy
+int FOOD_MAX{ 100 }; // Max food energy
 float SUSTAINMENT{ 0.1f }; // How much is spent on sustaining life per turn. Does not mutate
 
-int ADAMS_N{ 5 }; // Number of adams
+int ADAMS_N{ 100 }; // Number of adams
 float ADAM_MIN_SPEED{ 3.0f };
 float ADAM_MAX_SPEED{ 6.0f };
 float ADAM_MAX_ENERGY{ 100.0f };
 
 float MUTATION_CHANCE{ 0.1f }; // Reproduction mutation probability 
 float MUTATION_STR{ 0.1f }; // Reproduction mutation strength
+float WIGGLE_DIST{ 2.0f }; // Wiggle distance
 //
 
 // Using the constructor to initialize with a seed
@@ -84,9 +85,8 @@ struct Bacterium {
         /* Child constructor */
 
         // Coords. Child's coords are close to parent's, but not exactly
-        float max_spawn_spread{ 5.0f }; // How far a child will spawn relative to parent
-        m_x = random_float(parent->m_x - max_spawn_spread, parent->m_x + max_spawn_spread);
-        m_y = random_float(parent->m_y - max_spawn_spread, parent->m_y + max_spawn_spread);
+        m_x = random_float(parent->m_x - WIGGLE_DIST, parent->m_x + WIGGLE_DIST);
+        m_y = random_float(parent->m_y - WIGGLE_DIST, parent->m_y + WIGGLE_DIST);
 
         // Mutate speed
         if (random_float(0.0f, 1.0f) <= MUTATION_CHANCE) {
@@ -177,7 +177,13 @@ int main()
         }
         frames_json.push_back(frame);
 
-        // Movement
+        // Wiggle
+        for (Bacterium* b : bacteria_container) {
+            b->m_x += random_float(-WIGGLE_DIST, WIGGLE_DIST);
+            b->m_y += random_float(-WIGGLE_DIST, WIGGLE_DIST);
+        }
+
+        // Proper movement
         if (food_container.size() > 0) {
             for (Bacterium* b : bacteria_container) {
                 // Find closest food

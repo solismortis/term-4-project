@@ -30,7 +30,7 @@ def animate(step):
     ax.clear()
     plt.title(f'Step: {step}, '
               f'Bacteria count: {len(frames[step]['bacteria'])}, '
-              f'Reproduction evens: {frames[step]['reproduction events']}, '
+              f'Reproduction events: {frames[step]['reproduction events']}, '
               f'Death count: {frames[step]['death count']}', loc='left')
     ax.set_xlim([0, 100])
     ax.set_ylim([0, 100])

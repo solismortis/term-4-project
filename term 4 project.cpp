@@ -18,12 +18,12 @@ using json = nlohmann::ordered_json;
 int STEPS{ 100 }; // Total simulation steps
 int LEVEL_SIZE{ 100 }; // Width and height of the level
 
-float FOOD_DROP_PROB{ 0.005f }; // Probability of adding food per turn
+float FOOD_DROP_PROB{ 0.2f }; // Probability of adding food per turn
 int	FOOD_MIN{ 10 }; // Min food energy
-int FOOD_MAX{ 100 }; // Max food energy
+int FOOD_MAX{ 50 }; // Max food energy
 float SUSTAINMENT{ 0.1f }; // How much is spent on sustaining life per turn. Does not mutate
 
-int ADAMS_N{ 100 }; // Number of adams
+int ADAMS_N{ 200 }; // Number of adams
 float ADAM_MIN_SPEED{ 3.0f };
 float ADAM_MAX_SPEED{ 6.0f };
 float ADAM_MAX_ENERGY{ 100.0f };

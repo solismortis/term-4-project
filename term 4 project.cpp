@@ -129,8 +129,6 @@ int main()
 {
 
     cv::Mat frame;
-    cv::Mat overlay;
-    float alpha{ 0.5f };
 
     std::vector<Bacterium*> bacteria_container;
     std::vector<Bacterium*> newborns;
@@ -161,13 +159,11 @@ int main()
         // Render frame
         frame = cv::Mat::zeros(LEVEL_SIZE * VIDEO_SCALE, LEVEL_SIZE * VIDEO_SCALE, CV_8UC3);
         for (Food* f : food_container) {
-            overlay = cv::Mat::zeros(LEVEL_SIZE * VIDEO_SCALE, LEVEL_SIZE * VIDEO_SCALE, CV_8UC3);
-            cv::circle(overlay, cv::Point(
+            cv::circle(frame, cv::Point(
                 f->m_x * VIDEO_SCALE,
                 f->m_y * VIDEO_SCALE),
                 f->m_radius * VIDEO_SCALE,
                 cv::Scalar(0, 255, 255), -1, cv::LINE_AA);
-            cv::addWeighted(overlay, alpha, frame, 1.0f - alpha, 0, frame);
         }
         for (Bacterium* b : bacteria_container) {
             cv::circle(frame, cv::Point(

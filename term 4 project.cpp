@@ -10,8 +10,7 @@
 #include <string>
 #include <vector>
 #include <nlohmann/json.hpp>
-
-using json = nlohmann::ordered_json;
+#include <opencv2/opencv.hpp>
 
 // Hyperparameters
 //
@@ -32,6 +31,13 @@ float MUTATION_CHANCE{ 0.1f }; // Reproduction mutation probability
 float MUTATION_STR{ 0.1f }; // Reproduction mutation strength
 float WIGGLE_DIST{ 2.0f }; // Wiggle distance
 //
+
+// OpenCV setup
+int VIDEO_SCALE{ 10 };
+int FPS{ 10 };
+int codec{ cv::VideoWriter::fourcc('M', 'J', 'P', 'G') };
+cv::VideoWriter writer("output.avi", codec, FPS, cv::Size(LEVEL_SIZE * VIDEO_SCALE,
+    LEVEL_SIZE* VIDEO_SCALE), true);
 
 // Using the constructor to initialize with a seed
 std::mt19937 mt(time(nullptr));
@@ -121,10 +127,10 @@ struct Bacterium {
 
 int main()
 {
-    std::ofstream frames_file("frames.json");
-    json frames_json{ json::array() };
-    json frame;
-    json bacteria;
+
+    cv::Mat frame;
+    cv::Mat overlay;
+    float alpha{ 0.5f };
 
     std::vector<Bacterium*> bacteria_container;
     std::vector<Bacterium*> newborns;
@@ -152,30 +158,27 @@ int main()
     while (step < STEPS) {
         std::cout << "Step: " << step << "\n";
 
-        // Save frame
-        frame["step"] = step;
-        frame["death count"] = death_count;
-        frame["reproduction events"] = reproduction_events;
-        frame["bacteria"] = json::array();
-        for (Bacterium* b : bacteria_container) {
-            json bacteria_j{
-                {"x", b->m_x},
-                {"y", b->m_y},
-                {"max_speed", b->m_max_speed},
-                {"max_energy", b->m_max_energy},
-                {"energy", b->m_energy} };
-            frame["bacteria"].push_back(bacteria_j);
-        }
-        frame["food"] = json::array();
+        // Render frame
+        frame = cv::Mat::zeros(LEVEL_SIZE * VIDEO_SCALE, LEVEL_SIZE * VIDEO_SCALE, CV_8UC3);
         for (Food* f : food_container) {
-            json food_j{
-                {"x", f->m_x},
-                {"y", f->m_y},
-                {"energy", f->m_energy},
-                {"radius", f->m_radius}};
-            frame["food"].push_back(food_j);
+            overlay = cv::Mat::zeros(LEVEL_SIZE * VIDEO_SCALE, LEVEL_SIZE * VIDEO_SCALE, CV_8UC3);
+            cv::circle(overlay, cv::Point(
+                f->m_x * VIDEO_SCALE,
+                f->m_y * VIDEO_SCALE),
+                f->m_radius * VIDEO_SCALE,
+                cv::Scalar(0, 255, 255), -1, cv::LINE_AA);
+            cv::addWeighted(overlay, alpha, frame, 1.0f - alpha, 0, frame);
         }
-        frames_json.push_back(frame);
+        for (Bacterium* b : bacteria_container) {
+            cv::circle(frame, cv::Point(
+                b->m_x*VIDEO_SCALE,
+                b->m_y * VIDEO_SCALE),
+                0.7 * VIDEO_SCALE, cv::Scalar(
+                    255,
+                    static_cast<int>(b->m_max_energy / ADAM_MAX_ENERGY * 255.0f),
+                    static_cast<int>(b->m_max_speed / ADAM_MAX_SPEED) * 255.0f), -1, cv::LINE_AA);
+        }
+        writer.write(frame);
 
         // Wiggle
         for (Bacterium* b : bacteria_container) {
@@ -304,7 +307,6 @@ int main()
         ++step;
     }
 
-    frames_file << frames_json;
-    frames_file.close();
+    writer.release();
     std::cout << "Simulation over\n";
 }

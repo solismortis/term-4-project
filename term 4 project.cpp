@@ -14,7 +14,7 @@
 
 // Hyperparameters
 //
-int STEPS{ 100 }; // Total simulation steps
+int STEPS{ 1000 }; // Total simulation steps
 int LEVEL_SIZE{ 100 }; // Width and height of the level
 
 float FOOD_DROP_PROB{ 0.2f }; // Probability of adding food per turn
@@ -22,7 +22,7 @@ int	FOOD_MIN{ 10 }; // Min food energy
 int FOOD_MAX{ 50 }; // Max food energy
 float SUSTAINMENT{ 0.1f }; // How much is spent on sustaining life per turn. Does not mutate
 
-int ADAMS_N{ 200 }; // Number of adams
+int ADAMS_N{ 1000 }; // Number of adams
 float ADAM_MIN_SPEED{ 3.0f };
 float ADAM_MAX_SPEED{ 6.0f };
 float ADAM_MAX_ENERGY{ 100.0f };
@@ -125,6 +125,32 @@ struct Bacterium {
     }
 };
 
+#include <opencv2/opencv.hpp>
+
+void drawTransparentCircle(cv::Mat& img, cv::Point center, int radius, cv::Scalar color, double alpha) {
+    // Clamp alpha to [0, 1]
+    alpha = std::max(0.0, std::min(1.0, alpha));
+
+    // Define bounding box for circle
+    cv::Rect roiRect(center.x - radius, center.y - radius, radius * 2, radius * 2);
+
+    // Clip ROI to image boundaries
+    roiRect &= cv::Rect(0, 0, img.cols, img.rows);
+    if (roiRect.width <= 0 || roiRect.height <= 0) return;
+
+    // Extract region of interest
+    cv::Mat roi = img(roiRect);
+
+    // Create blank overlay
+    cv::Mat overlay = cv::Mat::zeros(roi.size(), roi.type());
+
+    // Draw solid circle on overlay
+    cv::circle(overlay, cv::Point(radius, radius), radius, color, -1);
+
+    // Blend circle with original ROI
+    cv::addWeighted(overlay, alpha, roi, 1.0 - alpha, 0, roi);
+}
+
 int main()
 {
 
@@ -159,6 +185,12 @@ int main()
         // Render frame
         frame = cv::Mat::zeros(LEVEL_SIZE * VIDEO_SCALE, LEVEL_SIZE * VIDEO_SCALE, CV_8UC3);
         for (Food* f : food_container) {
+            //drawTransparentCircle(frame, cv::Point(
+            //    f->m_x * VIDEO_SCALE,
+            //    f->m_y * VIDEO_SCALE),
+            //    f->m_radius * VIDEO_SCALE,
+            //    cv::Scalar(0, 255, 255), f->m_energy / f->m_radius * 20);
+
             cv::circle(frame, cv::Point(
                 f->m_x * VIDEO_SCALE,
                 f->m_y * VIDEO_SCALE),
